@@ -3,6 +3,9 @@ from keras.engine.topology import Layer
 import numpy as np
 import math
 
+import tensorflow as tf
+K = tf.keras.backend
+
 def get_mixture_coef(output, numComonents=24, outputDim=1):
     out_pi = output[:,:numComonents]
     out_sigma = output[:,numComonents:2*numComonents]
@@ -30,10 +33,12 @@ def tf_normal(y, mu, sigma):
     return result
 
 def get_lossfunc(out_pi, out_sigma, out_mu, y):
+    e = 1e-7
     result = tf_normal(y, out_mu, out_sigma)
     result = result * out_pi
     result = K.sum(result, axis=1, keepdims=True)
-    result = -K.log(result + 1e-8)
+    # result = -K.log(result + 1e-8)
+    result = -K.log(result + e)
     return K.mean(result)
 
 def mdn_loss(numComponents=24, outputDim=1):
@@ -42,9 +47,9 @@ def mdn_loss(numComponents=24, outputDim=1):
         return get_lossfunc(out_pi, out_sigma, out_mu, y)
     return loss
 
-class MixtureDensity(Layer):
-    def __init__(self, kernelDim, numComponents, **kwargs):
-        self.hiddenDim = 24
+class MixtureDensity(tf.keras.layers.Layer):
+    def __init__(self, kernelDim, numComponents, hiddenDim=24, **kwargs):
+        self.hiddenDim = hiddenDim
         self.kernelDim = kernelDim
         self.numComponents = numComponents
         super(MixtureDensity, self).__init__(**kwargs)
@@ -52,12 +57,21 @@ class MixtureDensity(Layer):
     def build(self, inputShape):
         self.inputDim = inputShape[1]
         self.outputDim = self.numComponents * (2+self.kernelDim)
-        self.Wh = K.variable(np.random.normal(scale=0.5,size=(self.inputDim, self.hiddenDim)))
-        self.bh = K.variable(np.random.normal(scale=0.5,size=(self.hiddenDim)))
-        self.Wo = K.variable(np.random.normal(scale=0.5,size=(self.hiddenDim, self.outputDim)))
-        self.bo = K.variable(np.random.normal(scale=0.5,size=(self.outputDim)))
+        # self.Wh = K.variable(np.random.normal(scale=0.5,size=(self.inputDim, self.hiddenDim)))
+        # self.bh = K.variable(np.random.normal(scale=0.5,size=(self.hiddenDim)))
+        # self.Wo = K.variable(np.random.normal(scale=0.5,size=(self.hiddenDim, self.outputDim)))
+        # self.bo = K.variable(np.random.normal(scale=0.5,size=(self.outputDim)))
 
-        self.trainable_weights = [self.Wh,self.bh,self.Wo,self.bo]
+        self.Wh = self.add_weight(name="Wh", shape=tf.TensorShape((self.inputDim, self.hiddenDim)),
+            initializer='uniform', trainable=True)
+        self.bh = self.add_weight(name="bh", shape=tf.TensorShape((self.hiddenDim)),
+            initializer='uniform', trainable=True)
+        self.Wo = self.add_weight(name="Wo", shape=tf.TensorShape((self.hiddenDim, self.outputDim)),
+            initializer='uniform', trainable=True)
+        self.bo = self.add_weight(name="bo", shape=tf.TensorShape((self.outputDim)),
+            initializer='uniform', trainable=True)
+        # self.trainable_weights=[self.Wh,self.bh,self.Wo,self.bo]
+        super(MixtureDensity, self).build(inputShape)
 
     def call(self, x, mask=None):
         hidden = K.tanh(K.dot(x, self.Wh) + self.bh)
@@ -65,4 +79,7 @@ class MixtureDensity(Layer):
         return output
 
     def get_output_shape_for(self, inputShape):
-        return (inputShape[0], self.outputDim)
+        shape = tf.TensorShape(input_shape).as_list()
+        shape[-1] = self.output_dim
+        # return tf.TensorShape((inputShape[0], self.outputDim))
+        return tf.TensorShape(shape)

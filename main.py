@@ -1,11 +1,17 @@
 from keras.models import Sequential
 from keras.layers import Dense, Activation
-from keras.optimizers import Adam
+# from keras.optimizers import Adam
 from keras import objectives
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d, Axes3D #<-- Note the capitalization!
 from mdn import *
+
+import tensorflow as tf
+import tensorflow.keras.layers as L
+
+from tensorflow.keras.optimizers import Adam
+Sequential = tf.keras.models.Sequential
 
 def generate(output, testSize, numComponents=24, outputDim=1, M=1):
 	out_pi = output[:,:numComponents]
@@ -62,15 +68,15 @@ def oneDim2OneDim():
 	y_data = temp_data
 
 	model = Sequential()
-	model.add(Dense(128,input_shape=(1,)))
-	model.add(Activation('relu'))
-	model.add(Dense(128))
-	model.add(Activation('relu'))
-	model.add(Dense(128))
-	model.add(Activation('relu'))
+	model.add(L.Dense(128,input_shape=(1,)))
+	model.add(L.Activation('relu'))
+	model.add(L.Dense(128))
+	model.add(L.Activation('relu'))
+	model.add(L.Dense(128))
+	model.add(L.Activation('relu'))
 	model.add(MixtureDensity(outputDim,numComponents))
 
-	opt = Adam(lr=0.001)
+	opt = Adam(lr=0.0001)
 	model.compile(loss=mdn_loss(),optimizer=opt)
 	model.fit(x_data, y_data, batch_size=x_data.size, nb_epoch=10000, verbose=1)
 
