@@ -4,7 +4,7 @@ from keras.optimizers import Adam
 from keras import objectives
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import axes3d, Axes3D #<-- Note the capitalization! 
+from mpl_toolkits.mplot3d import axes3d, Axes3D #<-- Note the capitalization!
 from mdn import *
 
 def generate(output, testSize, numComponents=24, outputDim=1, M=1):
@@ -14,6 +14,12 @@ def generate(output, testSize, numComponents=24, outputDim=1, M=1):
 	out_mu = np.reshape(out_mu, [-1, numComponents, outputDim])
 	out_mu = np.transpose(out_mu, [1,0,2])
 	# use softmax to normalize pi into prob distribution
+	print("Output shape: {}".format(output.shape))
+	print("test_size: {}".format(testSize))
+	print("Out_pi ({}):\n{}".format(out_pi.shape, out_pi))
+	print("Out_sigma ({}):\n{}".format(out_sigma.shape, out_pi))
+	print("Out_mu ({}):\n{}".format(out_mu.shape, out_mu))
+	input("Press any key to continue")
 	max_pi = np.amax(out_pi, 1, keepdims=True)
 	out_pi = out_pi - max_pi
 	out_pi = np.exp(out_pi)
@@ -26,13 +32,21 @@ def generate(output, testSize, numComponents=24, outputDim=1, M=1):
 	mu = 0
 	std = 0
 	idx = 0
+	wait_for_input = True
 	for j in range(0, M):
 		for i in range(0, testSize):
-		  for d in range(0, outputDim):
-		    idx = np.random.choice(24, 1, p=out_pi[i])
-		    mu = out_mu[idx,i,d]
-		    std = out_sigma[i, idx]
-		    result[i, j, d] = mu + rn[i, j]*std
+			for d in range(0, outputDim):
+				idx = np.random.choice(24, 1, p=out_pi[i])
+				mu = out_mu[idx,i,d]
+				std = out_sigma[i, idx]
+				result[i, j, d] = mu + rn[i, j]*std
+				if wait_for_input:
+					print("Params:\nout_pi[{i}]:{outpi}\nidx:{idx}\nmu:{mu}\nstd:{std}".format(i=i,outpi=out_pi[i],idx=idx,mu=mu,std=std))
+					print("Result ({},{},{}): {}".format(j,i,d,result[i,j,d]))
+					key = input("Press any key to step, 'q' to go to the end of the loop")
+					if key == 'q':
+						wait_for_input = False
+
 	return result
 
 def oneDim2OneDim():
