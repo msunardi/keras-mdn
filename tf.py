@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar  4 22:33:32 2019
+
+@author: misun
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -31,35 +38,35 @@ def get_mixture_coef(output, KMIX=24, OUTPUTDIM=1):
   out_pi = tf.placeholder(dtype=tf.float32, shape=[None,KMIX], name="mixparam")
   out_sigma = tf.placeholder(dtype=tf.float32, shape=[None,KMIX], name="mixparam")
   out_mu = tf.placeholder(dtype=tf.float32, shape=[None,KMIX*OUTPUTDIM], name="mixparam")
-  splits = tf.split(1, 2 + OUTPUTDIM, output)
+  splits = tf.split(output, 2 + OUTPUTDIM, 1)
   out_pi = splits[0]
   out_sigma = splits[1]
-  out_mu = tf.pack(splits[2:], axis=2)
+  out_mu = tf.stack(splits[2:], axis=2)
   out_mu = tf.transpose(out_mu, [1,0,2])
   # use softmax to normalize pi into prob distribution
   max_pi = tf.reduce_max(out_pi, 1, keep_dims=True)
-  out_pi = tf.sub(out_pi, max_pi)
+  out_pi = tf.subtract(out_pi, max_pi)
   out_pi = tf.exp(out_pi)
-  normalize_pi = tf.inv(tf.reduce_sum(out_pi, 1, keep_dims=True))
-  out_pi = tf.mul(normalize_pi, out_pi)
+  normalize_pi = tf.reciprocal(tf.reduce_sum(out_pi, 1, keep_dims=True))
+  out_pi = tf.multiply(normalize_pi, out_pi)
   # use exponential to make sure sigma is positive
   out_sigma = tf.exp(out_sigma)
   return out_pi, out_sigma, out_mu
 
 def tf_normal(y, mu, sigma):
   oneDivSqrtTwoPI = 1 / math.sqrt(2*math.pi)
-  result = tf.sub(y, mu)
+  result = tf.subtract(y, mu)
   result = tf.transpose(result, [2,1,0])
-  result = tf.mul(result,tf.inv(sigma + 1e-8))
+  result = tf.multiply(result,tf.reciprocal(sigma + 1e-8))
   result = -tf.square(result)/2
-  result = tf.mul(tf.exp(result),tf.inv(sigma + 1e-8))*oneDivSqrtTwoPI
+  result = tf.multiply(tf.exp(result),tf.reciprocal(sigma + 1e-8))*oneDivSqrtTwoPI
   result = tf.reduce_prod(result, reduction_indices=[0])
   return result
 
 def get_lossfunc(out_pi, out_sigma, out_mu, y):
   result = tf_normal(y, out_mu, out_sigma)
   kernel = result
-  result = tf.mul(result, out_pi)
+  result = tf.multiply(result, out_pi)
   result = tf.reduce_sum(result, 1, keep_dims=True)
   beforelog = result
   result = -tf.log(result + 1e-8)
